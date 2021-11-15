@@ -1,0 +1,422 @@
+package skt.eiweb.admin;
+
+import java.io.BufferedReader;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import skt.eiweb.admin.mapper.AdminMapper;
+import skt.eiweb.admin.model.Device;
+import skt.eiweb.admin.model.LoginHistoryDto;
+import skt.eiweb.admin.model.ResourceGroup;
+import skt.eiweb.admin.model.ResourceGroupDto;
+import skt.eiweb.admin.model.RestExecHistory;
+import skt.eiweb.admin.model.RestExecHistoryDto;
+import skt.eiweb.admin.model.ScaleHistory;
+import skt.eiweb.admin.model.ScaleHistoryDto;
+import skt.eiweb.admin.model.ServiceGroup;
+import skt.eiweb.admin.model.ServiceGroupDto;
+import skt.eiweb.authority.mapper.UserMapper;
+import skt.eiweb.authority.model.User;
+import skt.eiweb.base.EIProperties;
+import skt.eiweb.manager.ManagerService;
+import skt.eiweb.service.model.ServiceCreHistory;
+import skt.eiweb.service.model.ServiceCreHistoryDto;
+import skt.eiweb.service.model.ServiceExecHistory;
+import skt.eiweb.service.model.ServiceExecHistoryDto;
+
+/**
+ * ================================================================================
+ * @Project      : eiweb
+ * @Package      : skt.eiweb.admin
+ * @Filename     : AdminServiceImpl.java
+ * 
+ * All rights reserved. No part of this work may be reproduced, stored in a
+ * retrieval system, or transmitted by any means without prior written
+ * permission of SKT corp.
+ * 
+ * Copyright(c) 2020 SKT corp. All rights reserved
+ * =================================================================================
+ *  No     DATE              Description
+ * =================================================================================
+ *  1.0	   2020. 9. 28.      Initial Coding & Update
+ * =================================================================================
+ */
+@Service
+public class AdminServiceImpl implements AdminService {
+
+	@Autowired
+	private AdminMapper mapper;
+
+	@Autowired
+	private UserMapper userMapper;
+
+	@Autowired
+	private ManagerService managerService;
+
+	@Autowired
+	private EIProperties props;
+
+	/**
+	 * 사용자 로그인 이력
+	 */
+	@Override
+	public List<LoginHistoryDto> userLoginHistory(LoginHistoryDto loginHistory) throws Exception {
+		return mapper.selectUserLoginHistory(loginHistory);
+	}
+
+	/**
+	 * 사용자 로그인 이력 리스트 전체 카운트
+	 */
+	@Override
+	public int userLoginHistoryTotalCount(LoginHistoryDto loginHistory) throws Exception {
+		return mapper.selectUserLoginHistoryTotalCount(loginHistory);
+	}
+
+	/**
+	 * 사용자 리스트
+	 */
+	@Override
+	public List<User> getUserList(User user) throws Exception {
+		return userMapper.selectUserPage(user);
+	}
+
+	/**
+	 * 사용자 리스트 전체 카운트
+	 */
+	@Override
+	public int getUserListTotalCount(User user) throws Exception {
+		return userMapper.selectUserPageTotalCount(user);
+	}
+
+	/**
+	 * Service 생성 이력 리스트
+	 */
+	@Override
+	public List<ServiceCreHistoryDto> serviceCreHistory(ServiceCreHistory serviceCreHistory) throws Exception {
+		return mapper.selectServiceCreHistory(serviceCreHistory);
+	}
+
+	/**
+	 * Service 생성 이력 리스트 전체 카운트
+	 */
+	@Override
+	public int serviceCreHistoryTotalCount(ServiceCreHistory serviceCreHistory) throws Exception {
+		return mapper.selectServiceCreHistoryTotalCount(serviceCreHistory);
+	}
+
+	/**
+	 * Service 실행 이력 리스트
+	 */
+	@Override
+	public List<ServiceExecHistoryDto> serviceExecHistory(ServiceExecHistory serviceExecHistory) throws Exception {
+		return mapper.selectServiceExecHistory(serviceExecHistory);
+	}
+
+	/**
+	 * Service 실행 이력 리스트 전체 카운트
+	 */
+	@Override
+	public int serviceExecHistoryTotalCount(ServiceExecHistory serviceExecHistory) throws Exception {
+		return mapper.selectServiceExecHistoryTotalCount(serviceExecHistory);
+	}
+
+	/**
+	 * REST 실행 이력 리스트
+	 */
+	@Override
+	public List<RestExecHistoryDto> restExecHistory(RestExecHistory restExecHistory) throws Exception {
+		return mapper.selectRestExecHistory(restExecHistory);
+	}
+
+	/**
+	 * REST 실행 이력 리스트 전체 카운트
+	 */
+	@Override
+	public int restExecHistoryTotalCount(RestExecHistory restExecHistory) throws Exception {
+		return mapper.selectRestExecHistoryTotalCount(restExecHistory);
+	}
+
+	/**
+	 * Scale In/Out 이력 리스트
+	 */
+	@Override
+	public List<ScaleHistoryDto> scaleHistory(ScaleHistory scaleHistory) throws Exception {
+		return mapper.selectScaleHistory(scaleHistory);
+	}
+
+	/**
+	 * Scale In/Out 이력 리스트 전체 카운트
+	 */
+	@Override
+	public int scaleHistoryTotalCount(ScaleHistory scaleHistory) throws Exception {
+		return mapper.selectScaleHistoryTotalCount(scaleHistory);
+	}
+
+	/**
+	 * 자원 그룹 리스트
+	 */
+	@Override
+	public List<ResourceGroupDto> resourceGroupList(ResourceGroup resourceGroup) throws Exception {
+		return mapper.selectResourceGroupList(resourceGroup);
+	}
+
+	/**
+	 * 자원 그룹 리스트 전체 카운트
+	 */
+	@Override
+	public int resourceGroupListTotalCount(ResourceGroup resourceGroup) throws Exception {
+		return mapper.selectResourceGroupListTotalCount(resourceGroup);
+	}
+
+	/**
+	 * 자원 그룹 생성
+	 */
+	@Override
+	public int createResourceGroup(ResourceGroup resourceGroup) throws Exception {
+		return mapper.insertResourceGroup(resourceGroup);
+	}
+
+	/**
+	 * 자원 그룹 수정
+	 */
+	@Override
+	public int updateResourceGroup(ResourceGroup resourceGroup) throws Exception {
+		return mapper.updateResourceGroup(resourceGroup);
+	}
+
+	/**
+	 * 자원 그룹 정보
+	 */
+	@Override
+	public ResourceGroupDto getResourceGroupInfo(String resourceGroupId) throws Exception {
+		ResourceGroup resourceGroup = new ResourceGroup();
+		resourceGroup.setResourceGroupId(resourceGroupId);
+		List<ResourceGroupDto> rsrs = mapper.selectResourceGroupList(resourceGroup);
+		ResourceGroupDto ret = null;
+		for (ResourceGroupDto rsr : rsrs) {
+			ret = rsr;
+		}
+		return ret;
+	}
+
+	/**
+	 * 자원 그룹 삭제
+	 */
+	@Override
+	public int deleteResourceGroup(String resourceId) throws Exception {
+		ResourceGroup resourceGroup = new ResourceGroup();
+		resourceGroup.setResourceGroupId(resourceId);
+		return mapper.deleteResourceGroup(resourceGroup);
+	}
+
+	/**
+	 * 자원 그룹 전체 리스트
+	 */
+	@Override
+	public List<ResourceGroupDto> resourceGroupAllList(ResourceGroup resourceGroup) throws Exception {
+		return mapper.selectResourceGroupAllList(resourceGroup);
+	}
+
+	/**
+	 * Scale In/Out 이력 저장
+	 */
+	@Override
+	public int saveScaleHistory(ScaleHistory scaleHistory) throws Exception {
+		return mapper.insertScaleHistory(scaleHistory);
+	}
+
+	/**
+	 * container 현황, cpu 사용율 (연동)
+	 */
+	@Override
+	public List<Device> deviceList(Device device) throws Exception {
+		// 장비 리스트 가져오기
+		List<Device> ret = mapper.deviceList(device);
+		Device dv;
+		int i = 0;
+		int j = 0;
+		List<HashMap<String, String>> cpus = null;
+		List<HashMap<String, String>> roles = null;
+		HashMap<String, String> itm;
+
+		try {
+			roles = managerService.containerInfo();
+			cpus = managerService.realAllCpu();
+		} catch (Exception e) {
+			if (ret != null && ret.size() > 0) {
+				for (i = 0; i < ret.size(); i++) {
+					dv = ret.get(i);
+					dv.setScaleState("MGR_CONN_FAIL");
+				}
+				return ret;
+			}
+		}
+
+		// Manager에서 장비 상태 데이터 적용
+		for (i = 0; i < ret.size(); i++) {
+			dv = ret.get(i);
+			if (cpus != null) {
+				for (j = 0; j < cpus.size(); j++) {
+					// {instance=4876512, serverName=esp-ei-001, cpu=0}
+					itm = cpus.get(j);
+					if (dv.getInstance().equals(itm.get("instance").toString())) {
+						dv.setUseCpu(itm.get("cpu"));
+						dv.setScaleState("on");
+					}
+				}
+			}
+			if (dv.getUseCpu() == null) {
+				dv.setUseCpu("0");
+				dv.setScaleState("off");
+			}
+			// set hasContainer
+			if (roles != null) {
+				for (j = 0; j < roles.size(); j++) {
+					// {role=master, hasContainer=3}
+					itm = roles.get(j);
+					if ("manager".equals(dv.getRole()) && "master".equals(itm.get("role"))
+						|| itm.get("role").equals(dv.getRole())) {
+						dv.setHasContainer(itm.get("hasContainer").toString());
+					}
+				}
+			}
+		}
+
+		return ret;
+	}
+
+	/**
+	 * 서비스 그룹 리스트
+	 */
+	@Override
+	public List<ServiceGroupDto> serviceGroupList(ServiceGroup serviceGroup) throws Exception {
+		return mapper.selectServiceGroupList(serviceGroup);
+	}
+
+	/**
+	 * 서비스 그룹 리스트 전체 카운트
+	 */
+	@Override
+	public int serviceGroupListTotalCount(ServiceGroup serviceGroup) throws Exception {
+		return mapper.selectServiceGroupListTotalCount(serviceGroup);
+	}
+
+	/**
+	 * 서비스 그룹 전체 리스트
+	 */
+	@Override
+	public List<ServiceGroupDto> serviceGroupAllList(ServiceGroup serviceGroup) throws Exception {
+		return mapper.selectServiceGroupAllList(serviceGroup);
+	}
+
+	/**
+	 * 서비스 그룹 생성
+	 */
+	@Override
+	public int createServiceGroup(ServiceGroup serviceGroup) throws Exception {
+		return mapper.insertServiceGroup(serviceGroup);
+	}
+
+	/**
+	 * 서비스 그룹 수정
+	 */
+	@Override
+	public int updateServiceGroup(ServiceGroup serviceGroup) throws Exception {
+		return mapper.updateServiceGroup(serviceGroup);
+	}
+
+	/**
+	 * 서비스 그룹 정보
+	 */
+	@Override
+	public ServiceGroupDto getServiceGroupInfo(String serviceGroupName) throws Exception {
+		ServiceGroup serviceGroup = new ServiceGroup();
+		serviceGroup.setServiceGroupName(serviceGroupName);
+		List<ServiceGroupDto> rsrs = mapper.selectServiceGroupList(serviceGroup);
+		ServiceGroupDto ret = null;
+		for (ServiceGroupDto rsr : rsrs) {
+			ret = rsr;
+		}
+		return ret;
+	}
+
+	/**
+	 * 서비스 그룹명 중복 체크
+	 */
+	@Override
+	public int chkServiceGroupName(ServiceGroup serviceGroup) throws Exception {
+		return mapper.countServiceGroupByServiceGroupName(serviceGroup);
+	}
+
+	/**
+	 * 서비스 그룹 삭제
+	 */
+	@Override
+	public int deleteServiceGroup(String serviceGroupName) throws Exception {
+		ServiceGroup serviceGroup = new ServiceGroup();
+		serviceGroup.setServiceGroupName(serviceGroupName);
+		return mapper.deleteServiceGroup(serviceGroup);
+	}
+
+	@Override
+	public int useServiceGroup(String serviceGroupName) throws Exception {
+		ServiceGroup serviceGroup = new ServiceGroup();
+		serviceGroup.setServiceGroupName(serviceGroupName);
+		return mapper.useServiceGroup(serviceGroup);
+	}
+
+	@Override
+	public HashMap<String, String> getServiceExecResult(ServiceExecHistory seh) throws Exception {
+		HashMap<String, String> ret = new HashMap<String, String>();
+
+		// TODO : 나중에 변경
+		String y = "2020";
+		String m = "09";
+		String d = "10";
+		String transid = "trans001";
+		String svcId = "S000000231"; // seh.getServiceId()
+		String basePath = props.getResultpath() + "/" + y + "/" + m + "/" + d + "/" + svcId + "/" + transid;
+
+		// html
+		String content = "";
+		String currentLine = null;
+		BufferedReader reader = null;
+
+		// 파일 로드
+		Path p = Paths.get(basePath + "/" + "result.html");
+		if (Files.exists(p)) {
+			reader = Files.newBufferedReader(p, Charset.forName("UTF-8"));
+			while ((currentLine = reader.readLine()) != null) {
+				content += currentLine;
+			}
+		}
+		ret.put("html", content);
+
+		// log
+		content = "";
+		p = Paths.get(basePath + "/" + "result.log");
+		if (Files.exists(p)) {
+			reader = Files.newBufferedReader(p, Charset.forName("UTF-8"));
+			while ((currentLine = reader.readLine()) != null) {
+				content += currentLine + "<br />";
+			}
+		}
+		ret.put("log", content);
+
+		return ret;
+	}
+
+	@Override
+	public int deleteUser(String userId) throws Exception {
+		User user = new User();
+		user.setUserId(userId);
+		return mapper.deleteUser(userId);
+	}
+}

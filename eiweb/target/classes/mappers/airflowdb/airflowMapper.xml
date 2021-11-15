@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="skt.eiweb.service.airflowMapper.AirflowMapper">
+
+    <select id="selectDagState" parameterType="skt.eiweb.service.model.DagRun" resultType="skt.eiweb.service.model.DagRun">
+        SELECT dr.dag_id, dr.state,
+               DATE_FORMAT(dr.start_date, '%Y-%m-%d %H:%i:%s') run_date,
+               DATE_FORMAT(dr.end_date, '%Y-%m-%d %H:%i:%s') end_date,
+               (CASE WHEN dr.end_date is NULL THEN (NOW() - dr.start_date) ELSE (dr.end_date - dr.start_date) END) elapsed
+          FROM dag_run dr, (SELECT dag_id, MAX(execution_date) execution_date FROM dag_run GROUP BY dag_id) lst
+         WHERE dr.dag_id = lst.dag_id 
+           AND dr.execution_date = lst.execution_date
+           AND dr.dag_id = #{dagId}
+    </select>
+    
+    <select id="selectDagState_developdb" parameterType="skt.eiweb.service.model.DagRun" resultType="skt.eiweb.service.model.DagRun">
+        SELECT dr.dag_id, dr.state,
+               TO_CHAR(start_date, 'YYYY-MM-DD HH24:MM:SS') start_date,
+               TO_CHAR(end_date, 'YYYY-MM-DD HH24:MM:SS') end_date,
+               (CASE WHEN dr.end_date is NULL THEN (NOW() - dr.start_date) ELSE (dr.end_date - dr.start_date) END) elapsed
+          FROM dag_run dr, (SELECT dag_id, MAX(execution_date) execution_date FROM dag_run GROUP BY dag_id) lst
+         WHERE dr.dag_id = lst.dag_id 
+           AND dr.execution_date = lst.execution_date
+           AND dr.dag_id = #{dagId}
+    </select>
+    
+</mapper>

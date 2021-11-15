@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="skt.eiweb.model.mapper.ModelMapper">
+
+    <select id="selectModel" parameterType="skt.eiweb.model.model.Model" resultType="skt.eiweb.model.model.ModelDto">
+        SELECT * FROM (
+            SELECT @rnum := @rnum + 1 AS no, TAB.* FROM (
+                SELECT DATE_FORMAT(reg_date, "%Y-%m-%d") reg_date, 
+                       reg_date ord, 
+                       fn_get_code_value_name('MODEL_PRIORITY', priority) priorityNm,
+                       fn_get_user_name(user_id) userName, 
+                       limit_runtime,
+                       evaluation_status,
+                       CONCAT(cpu_cores, ' / ', elapsed, ' sec.') test_result,
+                       elapsed,
+                       user_id, 
+                       model_name, 
+                       model_id, 
+                       version, 
+                       priority, 
+                       cpu_cores,
+                       base_image,
+                       model_desc
+                  FROM model 
+                 WHERE 1 = 1
+                <if test="modelId != null">
+                   AND model_id = #{modelId}
+                </if>
+                <if test="schKey != null">
+                   <if test="schType == 'modelName'">
+                   AND model_name LIKE CONCAT('%', #{schKey}, '%')
+                   </if>
+                   <if test="schType == 'user'">
+                   AND user_id LIKE CONCAT('%', #{schKey}, '%') OR fn_get_user_name(user_id) LIKE CONCAT('%', #{schKey}, '%')
+                   </if>
+                </if>
+            ) TAB, (SELECT @rnum :=0) B
+          ORDER BY ord DESC
+        ) OTAB
+         WHERE no BETWEEN (((#{page} - 1) * #{pageCount}) + 1) AND (#{page} * #{pageCount})
+    </select>
+
+    <select id="selectModelTotalCount" parameterType="skt.eiweb.model.model.Model" resultType="int">
+        SELECT COUNT(*) totalCount FROM model WHERE 1 = 1
+        <if test="schKey != null">
+           <if test="schType == 'modelName'">
+           AND model_name LIKE CONCAT('%', #{schKey}, '%')
+           </if>
+           <if test="schType == 'user'">
+           AND user_id LIKE CONCAT('%', #{schKey}, '%') OR fn_get_user_name(user_id) LIKE CONCAT('%', #{schKey}, '%')
+           </if>
+        </if>
+    </select>
+
+    <select id="makeNextModelId" resultType="string">
+        SELECT fn_next_model_id()
+    </select>
+
+    <insert id="insertModel" parameterType="skt.eiweb.model.model.Model">
+        INSERT INTO model 
+               (reg_date, user_id, model_name, model_id, version, priority, base_image, model_desc, limit_runtime, evaluation_status) 
+        VALUES (current_timestamp,
+                #{userId},
+                #{modelName},
+               <if test="modelId == null">
+                fn_next_model_id(),
+                1,
+               </if>
+               <if test="modelId != null">
+                #{modelId},
+                (SELECT max(ver) + 1 version FROM (SELECT max(version) ver FROM model WHERE model_id = #{modelId} UNION SELECT 0) a),
+               </if>
+                #{priority},
+                #{baseImage},
+                #{modelDesc},
+                #{limitRuntime},
+                'init'
+               )
+    </insert>
+
+    <select id="countModelByModelName" parameterType="skt.eiweb.model.model.Model" resultType="int">
+        SELECT COUNT(*) FROM model 
+         WHERE model_name = #{modelName} 
+        <if test="modelId != null">
+           AND model_id NOT IN (#{modelId})
+        </if>
+    </select>
+    
+    <delete id="deleteModel" parameterType="skt.eiweb.model.model.Model">
+        DELETE FROM model WHERE MODEL_ID = #{modelId}
+    </delete>
+    
+    <insert id="insertModelHistory" parameterType="skt.eiweb.model.model.Model">
+        INSERT INTO model_reg_history 
+               (reg_date, user_id, model_name, model_id, version, priority, base_image, model_desc, limit_runtime, evaluation_status)
+        SELECT reg_date, user_id, model_name, model_id, version,priority, base_image, model_desc, limit_runtime, evaluation_status
+          FROM model 
+         WHERE model_id = #{modelId}
+    </insert>
+    
+    <update id="updateModel" parameterType="skt.eiweb.model.model.Model">
+        UPDATE model 
+           SET reg_date = current_timestamp,
+            <if test="modelName != null">
+               model_name = #{modelName},
+            </if>
+            <if test="priority != null">
+               priority = #{priority},
+            </if>
+            <if test="baseImage != null">
+               base_image = #{baseImage},
+            </if>
+            <if test="limitRuntime != null">
+               limit_runtime = #{limitRuntime},
+            </if>
+            <if test="evaluationStatus != null">
+               evaluation_status = #{evaluationStatus},
+            </if>
+            <if test="modelDesc != null">
+               model_desc = #{modelDesc},
+            </if>
+               version = version + 1
+         WHERE model_id = #{modelId}
+    </update>
+    
+    <select id="selectModelRegHist" parameterType="skt.eiweb.model.model.Model" resultType="skt.eiweb.model.model.ModelDto">
+        select * FROM (
+            SELECT @rnum := @rnum + 1 AS no, TAB.* FROM (
+                SELECT DATE_FORMAT(reg_date, '%Y-%m-%d %H:%i:%s') reg_date, 
+                       reg_date ord,
+                       fn_get_user_name(user_id) userName,
+                       limit_runtime,
+                       evaluation_status,
+                       CONCAT(cpu_cores, ' / ', elapsed, 'sec.') test_result,
+                       elapsed,
+                       user_id, 
+                       model_name, 
+                       model_id, 
+                       version, 
+                       (CASE WHEN version > 1 THEN 'Modify' ELSE 'Create' END) 
+                       action,
+                       fn_get_code_value_name('MODEL_PRIORITY',priority) priorityNm, 
+                       cpu_cores,
+                       base_image,
+                       model_desc
+                  FROM model_reg_history 
+                 WHERE 1 = 1
+                <if test="modelId != null">
+                   AND model_id = #{modelId}
+                </if>
+                <if test="version != null">
+                   AND version = #{version}
+                </if>
+                <if test="schKey != null">
+                   AND (model_name LIKE CONCAT('%', #{schKey}, '%') OR model_id LIKE CONCAT('%', #{schKey}, '%'))
+                </if>
+                <if test="action != null">
+                   <if test="action == 'CREATE'">
+                   AND version = 1
+                   </if>
+                   <if test="action == 'MODIFY'">
+                   AND version > 1
+                   </if>
+                </if>
+                <if test="startDate != null and endDate != null">
+                   AND reg_date BETWEEN STR_TO_DATE(CONCAT(#{startDate}, '000000'), '%Y%m%d%H%i%S') AND STR_TO_DATE(CONCAT(#{endDate}, '235959'), '%Y%m%d%H%i%S')
+                </if>
+            ) TAB, (SELECT @rnum :=0) B
+          ORDER BY ord DESC, CAST(version AS SIGNED) DESC
+        ) OTAB
+         WHERE no BETWEEN (((#{page} - 1) * #{pageCount}) + 1) AND (#{page} * #{pageCount})
+    </select>
+    
+    <select id="selectModelRegHistTotalCount" parameterType="skt.eiweb.model.model.Model" resultType="int">
+        SELECT COUNT(*) totalCount 
+          FROM model_reg_history 
+         WHERE 1 = 1
+        <if test="modelId != null">
+           AND model_id = #{modelId}
+        </if>
+        <if test="version != null">
+           AND version = #{version}
+        </if>
+        <if test="schKey != null">
+           AND (model_name LIKE CONCAT('%', #{schKey}, '%') OR model_id LIKE CONCAT('%', #{schKey}, '%'))
+        </if>
+        <if test="action != null">
+           <if test="action == 'CREATE'">
+           AND version = 1
+           </if>
+           <if test="action == 'MODIFY'">
+           AND version > 1
+           </if>
+        </if>
+        <if test="startDate != null and endDate != null">
+           AND reg_date BETWEEN STR_TO_DATE(CONCAT(#{startDate}, '000000'), '%Y%m%d%H%i%S') AND STR_TO_DATE(CONCAT(#{endDate}, '235959'), '%Y%m%d%H%i%S')
+        </if>
+    </select>
+    
+    <select id="selectIsUseService" parameterType="skt.eiweb.model.model.Model" resultType="int">
+        SELECT COUNT(*) FROM service WHERE model_id = #{modelId}
+    </select>
+
+</mapper>

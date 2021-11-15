@@ -1,0 +1,56 @@
+package skt.eiweb.base;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import skt.eiweb.base.model.EIResponse;
+import skt.eiweb.dashboard.DashboardService;
+
+/**
+ * ================================================================================
+ * @Project      : eiweb
+ * @Package      : skt.eiweb.base
+ * @Filename     : BaseController.java
+ * 
+ * All rights reserved. No part of this work may be reproduced, stored in a
+ * retrieval system, or transmitted by any means without prior written
+ * permission of SKT corp.
+ * 
+ * Copyright(c) 2020 SKT corp. All rights reserved
+ * =================================================================================
+ *  No     DATE              Description
+ * =================================================================================
+ *  1.0	   2020. 9. 28.      Initial Coding & Update
+ * =================================================================================
+ */
+@RestController
+public class BaseController {
+
+	@Autowired
+	BaseService service;
+
+	@Autowired
+	DashboardService dashboardService;
+
+	/**
+	 * 서버 상태 확인
+	 * @return
+	 * @throws Exception
+	 */
+	@GetMapping("/nock")
+	public EIResponse nock() throws Exception {
+		EIResponse res = new EIResponse();
+		res.setResult(EIResponse.SUCCESS);
+		res.setMessage("가동중");
+
+		// res.setData( service.nock() );
+		// String command = "calc"; // String.format("netstat -nat | grep LISTEN|grep %d", port);
+		// String[] shell = {command};
+		// Runtime.getRuntime().exec(shell);
+		// dashboardService.insCpuHistory();
+
+		return res;
+	}
+
+}

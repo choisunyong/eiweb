@@ -1,0 +1,13 @@
+package skt.eiweb;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class EiwebApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}

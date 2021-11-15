@@ -1,0 +1,65 @@
+package skt.eiweb.file;
+
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Stream;
+
+import org.springframework.web.multipart.MultipartFile;
+
+import skt.eiweb.file.model.File;
+import skt.eiweb.file.model.FileDto;
+
+/**
+ * ================================================================================
+ * @Project      : eiweb
+ * @Package      : skt.eiweb.file
+ * @Filename     : FileService.java
+ * 
+ * All rights reserved. No part of this work may be reproduced, stored in a
+ * retrieval system, or transmitted by any means without prior written
+ * permission of SKT corp.
+ * 
+ * Copyright(c) 2020 SKT corp. All rights reserved
+ * =================================================================================
+ *  No     DATE              Description
+ * =================================================================================
+ *  1.0	   2020. 9. 29.      Initial Coding & Update
+ * =================================================================================
+ */
+public interface FileService {
+
+	public void init();
+
+	public void init(String path);
+
+	public File save(MultipartFile file);
+
+	@SuppressWarnings("rawtypes")
+	public HashMap load(String fileCode);
+
+	public void deleteAll();
+
+	public void deleteAll(String path);
+
+	public Stream<Path> loadAll();
+
+	public void modelUploaded(String modelId, String[] fileCodes) throws Exception;
+
+	public int delete(String fileCode) throws Exception;
+
+	public int deleteByModelId(String modelId) throws Exception;
+
+	public List<FileDto> getFileListByModelId(String modelId) throws Exception;
+
+	public List<FileDto> getFileListByModelId(String modelId, String version) throws Exception;
+
+	public String[] newFileCodes(FileDto dto) throws Exception;
+
+	public int refreshFileCodes(FileDto dto) throws Exception;
+
+	public int updateVersionFiles(FileDto dto) throws Exception;
+
+	public int removeNotMappingFiles() throws Exception;
+
+}

@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="skt.eiweb.dashboard.mapper.DashboardMapper">
+
+    <!-- 서비스 이력 _ begin -->
+    <select id="selectDashboardServiceExecSummForGroup" resultType="skt.eiweb.dashboard.model.DashboardServiceDto">
+        SELECT grp.service_group_name, 
+               FORMAT((SELECT COUNT(*) FROM service s WHERE s.service_group_name=grp.service_group_name), 0) service_count,
+               FORMAT(IFNULL(COUNT(svc.service_id), 0), 0) exec_count,
+               FORMAT(SUM(CASE seh.service_status WHEN 'success' THEN 1 ELSE 0 END), 0) success,
+               FORMAT(SUM(CASE seh.service_status WHEN 'success' THEN 0 ELSE 1 END), 0) fail
+          FROM service_exec_history seh, service svc, service_group grp
+         WHERE svc.service_group_name = grp.service_group_name
+           AND seh.service_id = svc.service_id
+      GROUP BY grp.service_group_name
+    </select>
+    
+    <select id="selectDashboardServiceExecStatus" parameterType="skt.eiweb.dashboard.model.DashboardServiceDto" resultType="skt.eiweb.dashboard.model.DashboardServiceDto">
+        SELECT FORMAT(COUNT(*), 0) total,
+               FORMAT(IFNULL(SUM(CASE WHEN service_status = 'success' THEN 1 ELSE 0 END), 0), 0) success,
+               FORMAT(IFNULL(SUM(CASE WHEN service_status = 'success' THEN 0 ELSE 1 END), 0), 0) fail
+          FROM service_exec_history
+        <if test="isToday != null and isToday != ''">
+         WHERE DATE_FORMAT(execute_date, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')
+        </if>
+    </select>
+    
+    <select id="selectDashboardServiceExecHistory" resultType="skt.eiweb.dashboard.model.DashboardServiceDto">
+        SELECT svc.service_name, grp.service_group_name, seh.start_date, (seh.end_date - seh.start_date) elasped, seh.service_status
+          FROM service_exec_history seh, service svc, service_group grp
+         WHERE svc.service_group_name = grp.service_group_name
+           AND seh.service_id = svc.service_id
+           AND DATE_FORMAT(execute_date, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')
+      ORDER BY execute_date DESC
+    </select>
+    
+    <select id="selectDashboardServiceExecStatusForToday" resultType="skt.eiweb.dashboard.model.DashboardServiceDto">
+        SELECT ho.service_group_name, ho.hour, dt.exec_count,
+               FORMAT(IFNULL(dt.success, 0), 0) success,
+               FORMAT(IFNULL(dt.fail, 0), 0) fail
+          FROM (SELECT grp.service_group_name,
+                       DATE_FORMAT(execute_date, "%H") hour,
+                       IFNULL(COUNT(*), 0) exec_count,
+                       IFNULL(SUM(CASE WHEN seh.service_status = 'success' THEN 1 ELSE 0 END), 0) success,
+                       IFNULL(SUM(CASE WHEN seh.service_status != 'success' THEN 1 ELSE 0 END), 0) fail
+                  FROM service_exec_history seh, service svc, service_group grp
+                 WHERE svc.service_group_name = grp.service_group_name
+                   AND seh.service_id = svc.service_id
+                   AND DATE_FORMAT(execute_date, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')
+              GROUP BY grp.service_group_name, DATE_FORMAT(execute_date, "%H")
+               ) dt
+         RIGHT OUTER JOIN 
+         (
+            SELECT service_group_name, hour FROM service_group g, (
+                 SELECT 24-0 hour 
+                 UNION SELECT 24-1 hour 
+                 UNION SELECT 24-2 hour 
+                 UNION SELECT 24-3 hour 
+                 UNION SELECT 24-4 hour 
+                 UNION SELECT 24-5 hour 
+                 UNION SELECT 24-6 hour
+                 UNION SELECT 24-7 hour 
+                 UNION SELECT 24-8 hour 
+                 UNION SELECT 24-9 hour 
+                 UNION SELECT 24-10 hour 
+                 UNION SELECT 24-11 hour 
+                 UNION SELECT 24-12 hour 
+                 UNION SELECT 24-13 hour
+                 UNION SELECT 24-14 hour 
+                 UNION SELECT 24-15 hour 
+                 UNION SELECT 24-16 hour 
+                 UNION SELECT 24-17 hour 
+                 UNION SELECT 24-18 hour 
+                 UNION SELECT 24-19 hour 
+                 UNION SELECT 24-20 hour
+                 UNION SELECT 24-21 hour 
+                 UNION SELECT 24-22 hour 
+                 UNION SELECT 24-23 hour
+            ) 24h
+        ORDER BY g.service_group_name, 24h.hour
+         ) ho
+            ON dt.service_group_name = ho.service_group_name AND dt.hour = ho.hour
+      ORDER BY ho.service_group_name, ho.hour
+    </select>
+    <!-- 서비스 이력 _ end -->
+    
+    <!-- 리소스 이력 _ begin -->
+    <select id="selectDashboardScaleInOutSummary" resultType="skt.eiweb.dashboard.model.DashboardScaleInOutDto">
+        SELECT * FROM (
+            SELECT s.server_role,
+                   SUM(CASE WHEN DATE_FORMAT(run_date, "%Y-%m-%d") = DATE_FORMAT(DATE_SUB(current_timestamp, INTERVAL 0 DAY), "%Y-%m-%d") THEN (CASE WHEN action='user_start' THEN 1 ELSE (CASE WHEN action='user_stop' THEN -1 ELSE 0 END) END) END) v1,
+                   SUM(CASE WHEN DATE_FORMAT(run_date, "%Y-%m-%d") = DATE_FORMAT(DATE_SUB(current_timestamp, INTERVAL 1 DAY), "%Y-%m-%d") THEN (CASE WHEN action='user_start' THEN 1 ELSE (CASE WHEN action='user_stop' THEN -1 ELSE 0 END) END) END) v2,
+                   SUM(CASE WHEN DATE_FORMAT(run_date, "%Y-%m-%d") = DATE_FORMAT(DATE_SUB(current_timestamp, INTERVAL 2 DAY), "%Y-%m-%d") THEN (CASE WHEN action='user_start' THEN 1 ELSE (CASE WHEN action='user_stop' THEN -1 ELSE 0 END) END) END) v3,
+                   SUM(CASE WHEN DATE_FORMAT(run_date, "%Y-%m-%d") = DATE_FORMAT(DATE_SUB(current_timestamp, INTERVAL 3 DAY), "%Y-%m-%d") THEN (CASE WHEN action='user_start' THEN 1 ELSE (CASE WHEN action='user_stop' THEN -1 ELSE 0 END) END) END) v4,
+                   SUM(CASE WHEN DATE_FORMAT(run_date, "%Y-%m-%d") = DATE_FORMAT(DATE_SUB(current_timestamp, INTERVAL 4 DAY), "%Y-%m-%d") THEN (CASE WHEN action='user_start' THEN 1 ELSE (CASE WHEN action='user_stop' THEN -1 ELSE 0 END) END) END) v5,
+                   SUM(CASE WHEN DATE_FORMAT(run_date, "%Y-%m-%d") = DATE_FORMAT(DATE_SUB(current_timestamp, INTERVAL 5 DAY), "%Y-%m-%d") THEN (CASE WHEN action='user_start' THEN 1 ELSE (CASE WHEN action='user_stop' THEN -1 ELSE 0 END) END) END) v6,
+                   SUM(CASE WHEN DATE_FORMAT(run_date, "%Y-%m-%d") = DATE_FORMAT(DATE_SUB(current_timestamp, INTERVAL 6 DAY), "%Y-%m-%d") THEN (CASE WHEN action='user_start' THEN 1 ELSE (CASE WHEN action='user_stop' THEN -1 ELSE 0 END) END) END) v7,
+                   ((REPLACE(s.server_role, 'worker', '') + 10) - 3) sort
+              FROM (
+                    SELECT execute_date run_date, user_id, server_name, action
+                      FROM rest_exec_history
+                     WHERE success = 1
+                       AND execute_date BETWEEN DATE_SUB(current_timestamp, INTERVAL 6 DAY) AND current_timestamp
+              ) h, (
+                    SELECT code_name server_name, code instance, value server_role
+                      FROM common_code 
+                     WHERE group_code = 'SCALE_IN_OUT_LIST' AND use_yn = 'Y' AND (value = 'manager' OR value LIKE CONCAT('%', 'worker', '%'))
+              ) s
+             WHERE h.server_name = s.server_name
+          GROUP BY s.server_role
+        ) a
+        UNION ALL
+        SELECT * FROM (
+            SELECT value, 0 v1, 0 v2, 0 v3, 0 v4, 0 v5, 0 v6, 0 v7, sort
+              FROM common_code 
+             WHERE group_code = 'SCALE_IN_OUT_LIST' AND use_yn = 'Y'
+               AND value = 'manager'
+        ) b
+        ORDER BY sort DESC
+    </select>
+    
+    <select id="selectTodayCpuHour" resultType="skt.eiweb.dashboard.model.CpuHistoryDto">
+        SELECT DATE_FORMAT(receive_date, '%H') hour, 
+               instance, 
+               server_name,
+               ROUND(AVG(cpu_average), 2) cpu_average
+          FROM cpu_history
+         WHERE DATE_FORMAT(receive_date, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')
+      GROUP BY DATE_FORMAT(receive_date, '%H'), instance, server_name
+    </select>
+    
+    <select id="selectTodayCpuAvg" resultType="skt.eiweb.dashboard.model.CpuHistoryDto">
+        SELECT ROUND(AVG(cpu_average), 1) cpu_average 
+          FROM cpu_history
+         WHERE DATE_FORMAT(receive_date, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')
+    </select>
+    
+    <select id="selectCpuSummListForHour" resultType="skt.eiweb.dashboard.model.CpuHistoryDto">
+        SELECT DATE_FORMAT(receive_date, '%H') receive_date,
+               instance,
+               server_name,
+               round(avg(cpu_average), 2) cpu_average
+          FROM cpu_history
+         WHERE DATE_FORMAT(receive_date, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')
+         GROUP BY DATE_FORMAT(receive_date, '%H'), instance, server_name
+         UNION ALL
+        SELECT receive_date, 
+               'total' instance,
+               'Total' server_name,
+               SUM(cpu_average) cpu_average FROM (
+                   SELECT DATE_FORMAT(receive_date, '%H') receive_date,
+                          instance,
+                          server_name, 
+                          ROUND(AVG(cpu_average), 2) 
+                          cpu_average
+                     FROM cpu_history
+                    WHERE DATE_FORMAT(receive_date, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')
+                 GROUP BY DATE_FORMAT(receive_date, '%H'), instance, server_name
+               ) a
+      GROUP BY receive_date
+    </select>
+    
+    <select id="selectCpuSummListForDay" resultType="skt.eiweb.dashboard.model.CpuHistoryDto">
+        SELECT DATE_FORMAT(receive_date, '%m/%d') receive_date, instance, server_name, round(cpu_average, 2) cpu_average
+          FROM cpu_hist_summary
+         WHERE DATE_FORMAT(receive_date, '%Y%m') = DATE_FORMAT(NOW(), '%Y%m')
+         UNION ALL
+        SELECT receive_date, 'total' instance, 'Total' server_name, SUM(cpu_average) cpu_average 
+          FROM (
+            SELECT DATE_FORMAT(receive_date, '%m/%d') receive_date, instance, server_name, round(cpu_average, 2) cpu_average, cpu_unit 
+              FROM cpu_hist_summary
+             WHERE DATE_FORMAT(receive_date, '%Y%m') = DATE_FORMAT(NOW(), '%Y%m')
+          ) a
+      GROUP BY receive_date
+    </select>
+    
+    <select id="selectCpuSummListForMonth" resultType="skt.eiweb.dashboard.model.CpuHistoryDto">
+        SELECT DATE_FORMAT(receive_date, '%Y/%m') receive_date,
+               instance,
+               server_name,
+               round(avg(cpu_average), 2) cpu_average
+          FROM cpu_hist_summary
+         WHERE DATE_FORMAT(receive_date, '%Y') = DATE_FORMAT(NOW(), '%Y')
+         GROUP BY DATE_FORMAT(receive_date, '%Y/%m'), instance, server_name
+         UNION ALL
+        SELECT receive_date,
+               'total' instance, 
+               'Total' server_name, SUM(cpu_average) cpu_average
+          FROM (SELECT DATE_FORMAT(receive_date, '%Y/%m') receive_date,
+                       instance, server_name,
+                       round(avg(cpu_average), 2) cpu_average
+                  FROM cpu_hist_summary
+                 WHERE DATE_FORMAT(receive_date, '%Y') = DATE_FORMAT(NOW(), '%Y')
+                 GROUP BY DATE_FORMAT(receive_date, '%Y/%m'), instance, server_name
+          ) a GROUP BY receive_date
+    </select>
+    
+    <select id="selectCpuAvgList" resultType="skt.eiweb.dashboard.model.CpuHistoryDto">
+        SELECT * FROM (
+            SELECT DATE_FORMAT(receive_date, '%H:%i:%s') receive_date,
+                   ROUND(avg(cpu_average), 2) cpu_average
+              FROM cpu_history
+             WHERE DATE_FORMAT(receive_date, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')
+          GROUP BY DATE_FORMAT(receive_date, '%H:%i:%s')
+          ORDER BY receive_date DESC
+             LIMIT 100
+        ) a 
+      ORDER BY receive_date
+    </select>
+    <!-- 리소스 이력 _ end -->
+    
+    <insert id="insertCpuHistory" parameterType="skt.eiweb.dashboard.model.CpuHistory">
+        INSERT INTO cpu_history 
+               (server_name, cpu_average, instance<if test="cpuUnit != null and cpuUnit != ''">, cpu_unit</if>)  
+        VALUES (#{serverName}, #{cpuAverage}, #{instance}<if test="cpuUnit != null and cpuUnit != ''">, #{cpuUnit}</if>
+        )
+    </insert>
+    
+    <insert id="insertCpuHistSummary">
+        INSERT INTO cpu_hist_summary
+        SELECT DATE_FORMAT(receive_date, '%Y%m%d') receive_date,
+               instance,
+               server_name,
+               ROUND(AVG(cpu_average), 2) cpu_average,
+               MAX(cpu_unit) cpu_unit
+          FROM cpu_history
+      GROUP BY DATE_FORMAT(receive_date, '%Y%m%d'), instance, server_name
+            ON DUPLICATE KEY UPDATE cpu_average = cpu_average;
+    </insert>
+
+</mapper>

@@ -1,0 +1,411 @@
+package skt.eiweb.dashboard;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import lombok.extern.slf4j.Slf4j;
+import skt.eiweb.base.model.EIResponse;
+import skt.eiweb.dashboard.model.CpuHistoryDto;
+import skt.eiweb.dashboard.model.DashboardServiceDto;
+
+/**
+ * ================================================================================
+ * @Project      : eiweb
+ * @Package      : skt.eiweb.dashboard
+ * @Filename     : DashboardController.java
+ * 
+ * All rights reserved. No part of this work may be reproduced, stored in a
+ * retrieval system, or transmitted by any means without prior written
+ * permission of SKT corp.
+ * 
+ * Copyright(c) 2020 SKT corp. All rights reserved
+ * =================================================================================
+ *  No     DATE              Description
+ * =================================================================================
+ *  1.0	   2020. 9. 29.      Initial Coding & Update
+ * =================================================================================
+ */
+@Slf4j
+@CrossOrigin(origins = "*", allowedHeaders = "*")
+@RestController
+@RequestMapping("/dashboard")
+@SuppressWarnings({
+	"rawtypes", "unchecked", "unused"
+})
+public class DashboardController {
+	private static final Logger logger = LogManager.getLogger(DashboardController.class);
+
+	@Autowired
+	DashboardService dashboardService;
+
+	/**
+	 * 대시보드 리소스 데이터 조회
+	 */
+	@PostMapping("/dashboardResourceData")
+	public EIResponse dashboardResourceData(@RequestParam HashMap<String, String> parm, HttpServletRequest request) throws Exception {
+		logger.info("dashboardResourceData");
+		EIResponse res = new EIResponse();
+		HashMap data = new HashMap();
+
+		try {
+			// scale in/out 최근 일주일
+			data.put("scaleInOutSummary", dashboardService.getScaleInOutSummary());
+
+			// container 현황 (연동)
+			try {
+				data.put("containerInfo", dashboardService.getContainerInfo());
+			} catch (Exception e) {
+				data.put("containerInfo", new ArrayList<HashMap<String, String>>());
+			}
+
+			// 최근 cpu 데이터
+			data.put("cpuAvgList", dashboardService.getCpuAvgList());
+
+			// cpu 금일 시간대별/일자별/월별 현황
+			CpuHistoryDto cpuHistoryDto;
+			HashMap<String, HashMap> recvDateTmpMap = new HashMap();
+			HashMap<String, String> recvDateServerCpuAvgDetailMap;
+			String serverNames = "";
+
+			// cpu 일자별 현황
+			List<CpuHistoryDto> cpuHistoryDtoList = dashboardService.getCpuSummListForDay();
+			List<String> recvDateArrayList = new ArrayList<String>();
+			List<HashMap> cpuHistoryArraryList = new ArrayList<HashMap>();
+
+			for (int i = 0; i < cpuHistoryDtoList.size(); i++) {
+				cpuHistoryDto = cpuHistoryDtoList.get(i);
+				if (recvDateTmpMap.get(cpuHistoryDto.getReceiveDate()) == null) {
+					recvDateServerCpuAvgDetailMap = new HashMap();
+					recvDateServerCpuAvgDetailMap.put("receiveDate", cpuHistoryDto.getReceiveDate());
+					recvDateServerCpuAvgDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+					recvDateTmpMap.put(cpuHistoryDto.getReceiveDate(), recvDateServerCpuAvgDetailMap);
+					recvDateArrayList.add(cpuHistoryDto.getReceiveDate());
+					if (serverNames.indexOf(cpuHistoryDto.getServerName()) == -1) {
+						if (serverNames.length() > 0) {
+							serverNames += ",";
+						}
+						serverNames += cpuHistoryDto.getServerName();
+					}
+				} else {
+					recvDateServerCpuAvgDetailMap = recvDateTmpMap.get(cpuHistoryDto.getReceiveDate());
+					recvDateServerCpuAvgDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+					if (serverNames.indexOf(cpuHistoryDto.getServerName()) == -1) {
+						if (serverNames.length() > 0) {
+							serverNames += ",";
+						}
+						serverNames += cpuHistoryDto.getServerName();
+					}
+				}
+			}
+
+			for (int j = 0; j < recvDateArrayList.size(); j++) {
+				recvDateServerCpuAvgDetailMap = recvDateTmpMap.get(recvDateArrayList.get(j));
+				cpuHistoryArraryList.add(recvDateServerCpuAvgDetailMap);
+			}
+			data.put("serverNames", serverNames.split(","));
+			data.put("cpuSummListForDay", cpuHistoryArraryList);
+
+			// cpu 월별 현황
+			cpuHistoryDtoList = dashboardService.getCpuSummListForMonth();
+			recvDateArrayList = new ArrayList<String>();
+			cpuHistoryArraryList = new ArrayList<HashMap>();
+
+			for (int i = 0; i < cpuHistoryDtoList.size(); i++) {
+				cpuHistoryDto = cpuHistoryDtoList.get(i);
+				if (recvDateTmpMap.get(cpuHistoryDto.getReceiveDate()) == null) {
+					recvDateServerCpuAvgDetailMap = new HashMap();
+					recvDateServerCpuAvgDetailMap.put("receiveDate", cpuHistoryDto.getReceiveDate());
+					recvDateServerCpuAvgDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+					recvDateTmpMap.put(cpuHistoryDto.getReceiveDate(), recvDateServerCpuAvgDetailMap);
+					recvDateArrayList.add(cpuHistoryDto.getReceiveDate());
+				} else {
+					recvDateServerCpuAvgDetailMap = recvDateTmpMap.get(cpuHistoryDto.getReceiveDate());
+					recvDateServerCpuAvgDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+				}
+			}
+
+			for (int j = 0; j < recvDateArrayList.size(); j++) {
+				recvDateServerCpuAvgDetailMap = recvDateTmpMap.get(recvDateArrayList.get(j));
+				cpuHistoryArraryList.add(recvDateServerCpuAvgDetailMap);
+			}
+			data.put("cpuSummListForMonth", cpuHistoryArraryList);
+
+			// 금일 cpu 시간대별 현황
+			cpuHistoryDtoList = dashboardService.getCpuSummListForHour();
+			recvDateArrayList = new ArrayList<String>();
+			cpuHistoryArraryList = new ArrayList<HashMap>();
+
+			for (int i = 0; i < cpuHistoryDtoList.size(); i++) {
+				cpuHistoryDto = cpuHistoryDtoList.get(i);
+				if (recvDateTmpMap.get(cpuHistoryDto.getReceiveDate()) == null) {
+					recvDateServerCpuAvgDetailMap = new HashMap();
+					recvDateServerCpuAvgDetailMap.put("receiveDate", cpuHistoryDto.getReceiveDate());
+					recvDateServerCpuAvgDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+					recvDateTmpMap.put(cpuHistoryDto.getReceiveDate(), recvDateServerCpuAvgDetailMap);
+					recvDateArrayList.add(cpuHistoryDto.getReceiveDate());
+				} else {
+					recvDateServerCpuAvgDetailMap = recvDateTmpMap.get(cpuHistoryDto.getReceiveDate());
+					recvDateServerCpuAvgDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+				}
+			}
+
+			for (int j = 0; j < recvDateArrayList.size(); j++) {
+				recvDateServerCpuAvgDetailMap = recvDateTmpMap.get(recvDateArrayList.get(j));
+				cpuHistoryArraryList.add(recvDateServerCpuAvgDetailMap);
+			}
+			data.put("cpuSummListForHour", cpuHistoryArraryList);
+
+			// 금일 시간대별 cpu 평균
+			cpuHistoryDtoList = dashboardService.getCpuAvgListForHour();
+			recvDateArrayList = new ArrayList<String>();
+			cpuHistoryArraryList = new ArrayList<HashMap>();
+
+			for (int i = 0; i < cpuHistoryDtoList.size(); i++) {
+				cpuHistoryDto = cpuHistoryDtoList.get(i);
+				if (recvDateTmpMap.get(cpuHistoryDto.getHour().toString()) == null) {
+					recvDateServerCpuAvgDetailMap = new HashMap();
+					recvDateServerCpuAvgDetailMap.put("hour", cpuHistoryDto.getHour().toString());
+					recvDateServerCpuAvgDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+					recvDateTmpMap.put(cpuHistoryDto.getHour().toString(), recvDateServerCpuAvgDetailMap);
+					recvDateArrayList.add(cpuHistoryDto.getHour().toString());
+				} else {
+					recvDateServerCpuAvgDetailMap = recvDateTmpMap.get(cpuHistoryDto.getHour().toString());
+					recvDateServerCpuAvgDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+				}
+			}
+
+			for (int j = 0; j < recvDateArrayList.size(); j++) {
+				recvDateServerCpuAvgDetailMap = recvDateTmpMap.get(recvDateArrayList.get(j));
+				cpuHistoryArraryList.add(recvDateServerCpuAvgDetailMap);
+			}
+			data.put("cpuAvgListForHour", cpuHistoryArraryList);
+
+			// 금일 현재 cpu 평균
+			CpuHistoryDto todayCpuAvg = dashboardService.getTodayCpuAvg();
+			if (todayCpuAvg == null) {
+				todayCpuAvg = new CpuHistoryDto();
+				todayCpuAvg.setCpuAverage("0");
+			}
+			data.put("todayCpuAvg", todayCpuAvg);
+
+			res.setResult(EIResponse.SUCCESS);
+			res.setData(data);
+		} catch (Exception e) {
+			res.setResult(EIResponse.FAIL);
+			res.setMessage("대시보드 서비스 데이터 가져오기 실패");
+		}
+
+		return res;
+	}
+
+	/**
+	 * 대시보드 서비스 데이터 조회
+	 */
+	@PostMapping("/dashboardServiceData")
+	public EIResponse dashboardServiceData(@RequestParam HashMap<String, String> parm, HttpServletRequest request) throws Exception {
+		EIResponse res = new EIResponse();
+		HashMap data = new HashMap();
+
+		try {
+			DashboardServiceDto dashboardServiceDto = null;
+			HashMap<String, HashMap> hourTmpMap = new HashMap();
+			HashMap<String, String> hourServiceGroupCountDetailMap;
+
+			// 금일 시간대별 서비스 실행 현황
+			List<DashboardServiceDto> dashboardServiceDtoList = dashboardService.getServiceExecStatusForToday();
+			List<String> hourArrayList = new ArrayList<String>();
+			List<HashMap> dashboardServiceArrayList = new ArrayList<HashMap>();
+
+			for (int i = 0; i < dashboardServiceDtoList.size(); i++) {
+				dashboardServiceDto = dashboardServiceDtoList.get(i);
+				if (hourTmpMap.get(dashboardServiceDto.getHour().toString()) == null) {
+					hourServiceGroupCountDetailMap = new HashMap();
+					hourServiceGroupCountDetailMap.put("hour", dashboardServiceDto.getHour().toString());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName(), dashboardServiceDto.getExecCount());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName() + "_success", dashboardServiceDto.getSuccess());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName() + "_fail", dashboardServiceDto.getFail());
+					hourTmpMap.put(dashboardServiceDto.getHour().toString(), hourServiceGroupCountDetailMap);
+					hourArrayList.add(dashboardServiceDto.getHour().toString());
+				} else {
+					hourServiceGroupCountDetailMap = hourTmpMap.get(dashboardServiceDto.getHour().toString());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName(), dashboardServiceDto.getExecCount());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName() + "_success", dashboardServiceDto.getSuccess());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName() + "_fail", dashboardServiceDto.getFail());
+				}
+			}
+
+			for (int j = 0; j < hourArrayList.size(); j++) {
+				hourServiceGroupCountDetailMap = hourTmpMap.get(hourArrayList.get(j));
+				dashboardServiceArrayList.add(hourServiceGroupCountDetailMap);
+			}
+			data.put("serviceExecStatusForToday", dashboardServiceArrayList);
+
+			// 금일 서비스 실행 이력 리스트
+			data.put("serviceExecHistory", dashboardService.getServiceExecHistory());
+
+			// 금일 서비스 실행 현황
+			dashboardServiceDto = new DashboardServiceDto();
+			dashboardServiceDto.setIsToday("Y");
+			data.put("serviceTodayExecSummForGroup", dashboardService.getServiceExecStatus(dashboardServiceDto));
+
+			// 전체 서비스 실행 현황
+			data.put("serviceTotalExecSummForGroup", dashboardService.getServiceExecStatus());
+
+			// 그룹별 서비스 실행 현황 리스트
+			data.put("serviceExecSummListForGroup", dashboardService.getServiceExecSummForGroup());
+
+			res.setResult(EIResponse.SUCCESS);
+			res.setData(data);
+		} catch (Exception e) {
+			res.setResult(EIResponse.FAIL);
+			res.setMessage("대시보드 서비스 데이터 가져오기 실패");
+		}
+
+		return res;
+	}
+
+	/**
+	 * 대시보드 실시간 데이터 조회 (3초 마다)
+	 */
+	@PostMapping("/dashboardRealData")
+	public EIResponse dashboardRealData(@RequestParam HashMap<String, String> parm, HttpServletRequest request) throws Exception {
+		EIResponse res = new EIResponse();
+		HashMap data = new HashMap();
+
+		try {
+			// container 현황 (연동)
+			try {
+				data.put("containerInfo", dashboardService.getContainerInfo());
+			} catch (Exception e) {
+				data.put("containerInfo", new ArrayList<HashMap<String, String>>());
+			}
+
+			// 최근 cpu 데이터
+			data.put("cpuAvgList", dashboardService.getCpuAvgList());
+
+			// 금일 현재 cpu 평균
+			CpuHistoryDto todayCpuAvg = dashboardService.getTodayCpuAvg();
+			if (todayCpuAvg == null) {
+				todayCpuAvg = new CpuHistoryDto();
+				todayCpuAvg.setCpuAverage("0");
+			}
+			data.put("todayCpuAvg", todayCpuAvg);
+
+			res.setResult(EIResponse.SUCCESS);
+			res.setData(data);
+		} catch (Exception e) {
+			res.setResult(EIResponse.FAIL);
+			res.setMessage("대시보드 실시간 데이터 가져오기 실패");
+		}
+
+		return res;
+	}
+
+	/**
+	 * 대시보드 실시간 데이터 조회 (30초 마다)
+	 */
+	@PostMapping("/dashboardRealData2")
+	public EIResponse dashboardRealData2(@RequestParam HashMap<String, String> parm, HttpServletRequest request) throws Exception {
+		EIResponse res = new EIResponse();
+		HashMap data = new HashMap();
+
+		try {
+			DashboardServiceDto dashboardServiceDto = null;
+			HashMap<String, HashMap> hourTmpMap = new HashMap();
+			HashMap<String, String> hourServiceGroupCountDetailMap;
+
+			// 금일 시간대별 서비스 실행 현황
+			List<DashboardServiceDto> dashboardServiceDtoList = dashboardService.getServiceExecStatusForToday();
+			List<String> hourArrayList = new ArrayList<String>();
+			List<HashMap> dashboardServiceArrayList = new ArrayList<HashMap>();
+
+			for (int i = 0; i < dashboardServiceDtoList.size(); i++) {
+				dashboardServiceDto = dashboardServiceDtoList.get(i);
+				if (hourTmpMap.get(dashboardServiceDto.getHour().toString()) == null) {
+					hourServiceGroupCountDetailMap = new HashMap();
+					hourServiceGroupCountDetailMap.put("hour", dashboardServiceDto.getHour().toString());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName(), dashboardServiceDto.getExecCount());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName() + "_success", dashboardServiceDto.getSuccess());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName() + "_fail", dashboardServiceDto.getFail());
+					hourTmpMap.put(dashboardServiceDto.getHour().toString(), hourServiceGroupCountDetailMap);
+					hourArrayList.add(dashboardServiceDto.getHour().toString());
+				} else {
+					hourServiceGroupCountDetailMap = hourTmpMap.get(dashboardServiceDto.getHour().toString());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName(), dashboardServiceDto.getExecCount());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName() + "_success", dashboardServiceDto.getSuccess());
+					hourServiceGroupCountDetailMap.put(dashboardServiceDto.getServiceGroupName() + "_fail", dashboardServiceDto.getFail());
+				}
+			}
+
+			for (int j = 0; j < hourArrayList.size(); j++) {
+				hourServiceGroupCountDetailMap = hourTmpMap.get(hourArrayList.get(j));
+				dashboardServiceArrayList.add(hourServiceGroupCountDetailMap);
+			}
+			data.put("serviceExecStatusForToday", dashboardServiceArrayList);
+
+			// 금일 cpu 시간대별 현황
+			CpuHistoryDto cpuHistoryDto = null;
+			List<CpuHistoryDto> cpuHistoryDtoList = dashboardService.getCpuSummListForHour();
+			hourArrayList = new ArrayList<String>();
+			dashboardServiceArrayList = new ArrayList<HashMap>();
+
+			for (int i = 0; i < cpuHistoryDtoList.size(); i++) {
+				cpuHistoryDto = cpuHistoryDtoList.get(i);
+				if (hourTmpMap.get(cpuHistoryDto.getReceiveDate()) == null) {
+					hourServiceGroupCountDetailMap = new HashMap();
+					hourServiceGroupCountDetailMap.put("receiveDate", cpuHistoryDto.getReceiveDate());
+					hourServiceGroupCountDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+					hourTmpMap.put(cpuHistoryDto.getReceiveDate(), hourServiceGroupCountDetailMap);
+					hourArrayList.add(cpuHistoryDto.getReceiveDate());
+				} else {
+					hourServiceGroupCountDetailMap = hourTmpMap.get(cpuHistoryDto.getReceiveDate());
+					hourServiceGroupCountDetailMap.put(cpuHistoryDto.getServerName(), cpuHistoryDto.getCpuAverage());
+				}
+			}
+
+			for (int j = 0; j < hourArrayList.size(); j++) {
+				hourServiceGroupCountDetailMap = hourTmpMap.get(hourArrayList.get(j));
+				dashboardServiceArrayList.add(hourServiceGroupCountDetailMap);
+			}
+			data.put("cpuSummListForHour", dashboardServiceArrayList);
+
+			// scale in/out 최근 일주일
+			data.put("scaleInOutSummary", dashboardService.getScaleInOutSummary());
+
+			// 금일 서비스 실행 이력 리스트
+			data.put("serviceExecHistory", dashboardService.getServiceExecHistory());
+
+			// 금일 서비스 실행 현황
+			dashboardServiceDto = new DashboardServiceDto();
+			dashboardServiceDto.setIsToday("Y");
+			data.put("serviceTodayExecSummForGroup", dashboardService.getServiceExecStatus(dashboardServiceDto));
+
+			// 전체 서비스 실행 현황
+			data.put("serviceTotalExecSummForGroup", dashboardService.getServiceExecStatus());
+
+			// 그룹별 서비스 실행 현황 리스트
+			data.put("serviceExecSummListForGroup", dashboardService.getServiceExecSummForGroup());
+
+			res.setResult(EIResponse.SUCCESS);
+			res.setData(data);
+		} catch (Exception e) {
+			res.setResult(EIResponse.FAIL);
+			res.setMessage("대시보드 실시간 데이터 가져오기 실패");
+		}
+
+		return res;
+	}
+
+}

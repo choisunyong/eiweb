@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="skt.eiweb.authority.mapper.UserMapper">
+
+    <insert id="insertUser" parameterType="skt.eiweb.authority.model.User">
+    <![CDATA[
+        INSERT INTO user 
+               (signup_date, user_id, password, user_name, user_email, user_permission, activate) 
+        VALUES (current_timestamp, #{userId}, #{password}, #{userName}, #{userEmail}, #{userPermission}, 1)
+    ]]>
+    </insert>
+
+    <select id="selectUser" parameterType="skt.eiweb.authority.model.User" resultType="skt.eiweb.authority.model.User">
+        SELECT *
+          FROM user
+         WHERE 1 = 1
+         <if test="userId != null">AND user_id = #{userId}</if>
+         <if test="userName != null">AND user_name = #{userName}</if>
+         <if test="userEmail != null">AND user_email = #{userEmail}</if>
+         <if test="activate != null">AND activate = #{activate}</if>
+    </select>
+
+    <insert id="insertLoginHist" parameterType="skt.eiweb.authority.model.LoginHist">
+        INSERT INTO login_history 
+               (user_id, session, login_date) 
+        VALUES (#{userId}, #{session}, current_timestamp) 
+    </insert>
+
+    <select id="selectUserBySessionId" parameterType="skt.eiweb.authority.model.LoginHist" resultType="skt.eiweb.authority.model.User">
+        SELECT usr.user_id,
+               usr.user_name,
+               usr.user_permission
+          FROM user usr, login_history his
+         WHERE usr.user_id = his.user_id
+           AND session = #{session}
+      GROUP BY usr.user_id,
+               usr.user_email,
+               usr.user_name,
+               usr.user_permission,
+               usr.activate
+    </select>
+
+    <select id="selectUserByPw" parameterType="skt.eiweb.authority.model.User" resultType="skt.eiweb.authority.model.User">
+        SELECT * 
+          FROM user
+         WHERE 1 = 1
+         <if test="userId != null">AND user_id = #{userId}</if>
+         <if test="userName != null">AND user_name = #{userName}</if>
+         <if test="userEmail != null">AND user_email = #{userEmail}</if>
+         <if test="activate != null">AND activate = #{activate}</if>
+         <if test="password != null">AND password = #{password}</if>
+         <if test="schKey != null">AND user_id LIKE CONCAT('%', #{schKey}, '%')</if>
+    </select>
+
+    <update id="updatePassword" parameterType="skt.eiweb.authority.model.User">
+        UPDATE user 
+           SET password = #{password} 
+         WHERE user_id = #{userId}
+    </update>
+
+    <select id="selectUserPage" parameterType="skt.eiweb.authority.model.User" resultType="skt.eiweb.authority.model.User">
+        SELECT * FROM (
+            SELECT @rnum := @rnum + 1 AS no, TAB.* FROM (
+                SELECT user_id,
+                       DATE_FORMAT(signup_date, '%Y-%m-%d') signup_date, 
+                       signup_date ord,
+                       user_name,
+                       user_email,
+                       user_permission,
+                       fn_get_code_name('PERMISSION', user_permission) user_group,
+                       (SELECT max(login_date) FROM login_history WHERE user_id = usr.user_id) login_date,
+                       (CASE activate WHEN 1 THEN 'Y' ELSE 'N' END) activate
+                  FROM user usr
+                 WHERE 1 = 1
+                 <if test="userId != null">AND user_id = #{userId}</if>
+                 <if test="userName != null">AND user_name = #{userName}</if>
+                 <if test="userEmail != null">AND user_email = #{userEmail}</if>
+                 <if test="activate != null">AND activate = #{activate}</if>
+                 <if test="schKey != null">AND (user_id LIKE CONCAT('%', #{schKey}, '%') OR user_name LIKE CONCAT('%', #{schKey}, '%'))</if>
+                 <if test="userPermission != null">
+                   AND (fn_get_code_name('PERMISSION', user_permission) LIKE CONCAT('%', #{userPermission}, '%') OR user_permission LIKE CONCAT('%', #{userPermission}, '%'))
+                 </if>
+            ) TAB, (SELECT @rnum :=0) B
+          ORDER BY ord DESC
+        ) OTAB
+         WHERE no BETWEEN (((#{page} - 1) * #{pageCount}) + 1) AND (#{page} * #{pageCount})
+    </select>
+
+    <select id="selectUserPageTotalCount" parameterType="skt.eiweb.authority.model.User" resultType="int">
+        SELECT COUNT(*) FROM user
+         WHERE 1 = 1
+         <if test="userId != null">AND user_id = #{userId}</if>
+         <if test="userName != null">AND user_name = #{userName}</if>
+         <if test="userEmail != null">AND user_email = #{userEmail}</if>
+         <if test="activate != null">AND activate = #{activate}</if>
+         <if test="schKey != null">AND (user_id LIKE CONCAT('%', #{schKey}, '%') OR user_name LIKE CONCAT('%', #{schKey}, '%'))</if>
+         <if test="userPermission != null">
+           AND (fn_get_code_name('PERMISSION', user_permission) LIKE CONCAT('%', #{userPermission}, '%') OR user_permission LIKE CONCAT('%', #{userPermission}, '%'))
+         </if>
+    </select>
+
+    <update id="updateUser" parameterType="skt.eiweb.authority.model.User">
+        UPDATE user 
+           SET activate = <if test="activate != null">#{activate}</if><if test="activate == null">activate</if>
+           <if test="userName != null">, user_name = #{userName}</if>
+           <if test="userPermission != null">, user_permission = #{userPermission}</if>
+         WHERE user_id = #{userId}
+    </update>
+
+</mapper>

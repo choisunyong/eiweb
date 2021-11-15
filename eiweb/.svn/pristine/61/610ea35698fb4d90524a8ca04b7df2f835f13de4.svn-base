@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="skt.eiweb.file.mapper.FileMapper">
+
+    <insert id="insertFile" parameterType="skt.eiweb.file.model.File">
+    <![CDATA[
+        INSERT INTO MODEL_FILE 
+                (reg_date, user_id, model_id, file_code, file_name, file_size, file_ext, model_version) 
+        VALUES  (current_timestamp, #{userId}, #{modelId}, #{fileCode}, #{fileName}, #{fileSize}, #{fileExt}, #{modelVersion})
+    ]]>
+    </insert>
+
+    <select id="selectFile" parameterType="skt.eiweb.file.model.FileDto" resultType="skt.eiweb.file.model.FileDto">
+        SELECT F.*
+		  FROM MODEL_FILE F LEFT OUTER JOIN MODEL M ON F.MODEL_ID = M.MODEL_ID
+		 WHERE 1=1
+            <if test="userId != null">AND F.USER_ID = #{userId}</if>
+            <if test="modelId != null">AND F.MODEL_ID = #{modelId}</if>
+            <if test="fileCode != null">AND FILE_CODE = #{fileCode}</if>
+            <if test="fileName != null">AND FILE_NAME = #{fileName}</if>
+            <if test="fileSize != null">AND FILE_SIZE = #{fileSize}</if>
+            <if test="fileExt != null">AND FILE_EXT = #{fileExt}</if>
+            <if test="modelVersion != null">AND MODEL_VERSION = #{modelVersion}</if>
+            <if test="version != null">AND FILE_CODE LIKE CONCAT('%.',#{version},'.%')</if>
+            <if test="fileCodes != null">
+                AND FILE_CODE IN (''
+                <foreach collection="fileCodes" item="fileCode">
+                        ,#{fileCode}
+                    </foreach>
+                )
+            </if>
+    </select>
+
+    <update id="updateFile" parameterType="skt.eiweb.file.model.FileDto">
+        UPDATE MODEL_FILE 
+           SET FILE_CODE=#{newFileCode}, MODEL_ID=#{modelId}, MODEL_VERSION=#{modelVersion}
+         WHERE FILE_CODE=#{fileCode}
+    </update>
+    
+    <delete id="deleteFile" parameterType="skt.eiweb.file.model.FileDto">
+        DELETE FROM MODEL_FILE 
+         WHERE FILE_CODE=#{fileCode}
+    </delete>
+
+    <select id="selectNewFileCodes" parameterType="skt.eiweb.file.model.FileDto" resultType="skt.eiweb.file.model.FileDto">
+        SELECT * FROM MODEL_FILE 
+         WHERE MODEL_ID IS NULL AND FILE_CODE IN (''<foreach collection="fileCodes" item="fileCode">,#{fileCode}</foreach>)
+    </select>
+
+    <select id="selectDelFileCodes" parameterType="skt.eiweb.file.model.FileDto" resultType="skt.eiweb.file.model.FileDto">
+        SELECT * FROM MODEL_FILE 
+         WHERE MODEL_ID=#{modelId} AND FILE_CODE NOT IN (''<foreach collection="fileCodes" item="fileCode">,#{fileCode}</foreach>)
+    </select>
+
+    <select id="notMappingFiles" resultType="skt.eiweb.file.model.FileDto">
+        SELECT * FROM MODEL_FILE 
+         WHERE MODEL_ID IS NULL
+    </select>
+</mapper>
