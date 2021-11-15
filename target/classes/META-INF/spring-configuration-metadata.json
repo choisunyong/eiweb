@@ -9,13 +9,13 @@
       "name": "spring.airflow.datasource",
       "type": "javax.sql.DataSource",
       "sourceType": "skt.eiweb.config.AirflowDatabaseConfig",
-      "sourceMethod": "public javax.sql.DataSource airflowdbDataSource() "
+      "sourceMethod": "airflowdbDataSource()"
     },
     {
       "name": "spring.eiwebdb.datasource",
       "type": "javax.sql.DataSource",
       "sourceType": "skt.eiweb.config.EiwebDatabaseConfig",
-      "sourceMethod": "public javax.sql.DataSource eiwebdbDataSource() "
+      "sourceMethod": "eiwebdbDataSource()"
     }
   ],
   "properties": [
@@ -32,7 +32,8 @@
     {
       "name": "eiconfig.developing",
       "type": "java.lang.Boolean",
-      "sourceType": "skt.eiweb.base.EIProperties"
+      "sourceType": "skt.eiweb.base.EIProperties",
+      "defaultValue": false
     },
     {
       "name": "eiconfig.filepath",
@@ -47,7 +48,8 @@
     {
       "name": "eiconfig.max-file-name-len",
       "type": "java.lang.Integer",
-      "sourceType": "skt.eiweb.base.EIProperties"
+      "sourceType": "skt.eiweb.base.EIProperties",
+      "defaultValue": 90
     },
     {
       "name": "eiconfig.max-inactive-interval",
